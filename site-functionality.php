@@ -2,8 +2,8 @@
 /**
  * Plugin Name:         Site Functions
  * Description:         Custom functions for site
- * Author:              Patrizia Lutz
- * Author URI:          https://patrizia-lutz.tech
+ * Author:              Pea Lutz
+ * Author URI:          https://pealutz.me
  * Text Domain:         site-functionality
  * Domain Path:         /languages
  * Version:             1.0.1
