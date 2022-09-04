@@ -49,13 +49,14 @@ function site_functionality_init() {
 	include_once SITE_CORE_DIR . '/src/Abstracts/Base.php';
 	include_once SITE_CORE_DIR . '/src/Abstracts/PostType.php';
 	include_once SITE_CORE_DIR . '/src/Abstracts/Taxonomy.php';
+	include_once SITE_CORE_DIR . '/blocks/blocks.php';
 
-	$admin = new Admin( VERSION, PLUGIN );
-	$restAPI = new RestApi( VERSION, PLUGIN );
+	$admin        = new Admin( VERSION, PLUGIN );
+	$restAPI      = new RestApi( VERSION, PLUGIN );
 	$taxonomies   = new Taxonomies( VERSION, PLUGIN );
 	$postTypes    = new PostTypes( VERSION, PLUGIN );
 	$customFields = new CustomFields( VERSION, PLUGIN );
-	$util = new Util( VERSION, PLUGIN );
+	$util         = new Util( VERSION, PLUGIN );
 }
 add_action( 'plugins_loaded', __NAMESPACE__ . '\site_functionality_init' );
 

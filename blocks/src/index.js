@@ -1,11 +1,9 @@
 import { registerBlockType, registerBlockCollection } from '@wordpress/blocks';
 import { __ } from '@wordpress/i18n';
 
-import * as hero from './hero';
+import './filters';
 
-const blocks = [
-	hero
-];
+const blocks = [];
 
 /**
  * Function to register an individual block.
