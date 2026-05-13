@@ -19,7 +19,30 @@ class Options extends Base {
 
 	public $options = array();
 
-	public const OPTION_NAME = 'web_components';
+	public const OPTION_NAME = 'site_settings';
+
+	public const MENU_SLUG = 'site-settings';
+
+	/**
+	 * Remove media id
+	 *
+	 * @var string
+	 */
+	public $remote_media_option = 'remote_media_url';
+
+	/**
+	 * Remove media url
+	 *
+	 * @var string
+	 */
+	public $remote_media_url = 'https://abandonedstroller.com';
+
+	/**
+	 * Setting capabilities
+	 *
+	 * @var string
+	 */
+	public $capabilities = 'manage_options';
 
 	/**
 	 * Constructor.
@@ -52,14 +75,13 @@ class Options extends Base {
 	public function add_admin_menu() {
 
 		\add_options_page(
-			\esc_html__( 'Site Settings', 'site-functionality' ),
-			\esc_html__( 'Site Settings', 'site-functionality' ),
-			'manage_options',
-			'site-settings',
-			array( $this, 'render_page' ),
-			1
+			\esc_html__( 'Site Settings', 'site-functionality' ), // Page Title
+			\esc_html__( 'Site Settings', 'site-functionality' ), // Menu Title
+			$this->capabilities, // Capability
+			self::MENU_SLUG, // Menu Slug
+			array( $this, 'render_page' ), // Callback
+			1 // Position
 		);
-
 	}
 
 	/**
@@ -73,85 +95,64 @@ class Options extends Base {
 		 * @link https://developer.wordpress.org/reference/functions/register_setting/
 		 */
 		\register_setting(
-			'site_settings',
-			self::OPTION_NAME
+			self::OPTION_NAME, // Option Group
+			self::OPTION_NAME // Option Name
 		);
 
 		/**
 		 * @link https://developer.wordpress.org/reference/functions/add_settings_section/
 		 */
 		\add_settings_section(
-			self::OPTION_NAME . '_section',
-			'',
-			false,
-			self::OPTION_NAME
+			self::OPTION_NAME . '_section', // ID
+			'', // Title
+			false, // Callback
+			sself::MENU_SLUG // Page
 		);
 
 		/**
 		 * https://developer.wordpress.org/reference/functions/add_settings_field/
 		 */
 		\add_settings_field(
-			'donate_api_url',
-			__( 'Donate API URL', 'site-functionality' ),
-			array( $this, 'render_donate_api_url_field' ),
-			self::OPTION_NAME,
-			self::OPTION_NAME . '_section'
+			'remote_media_url', // ID
+			__( 'Serve Media from Remote URL', 'site-functionality' ), // Title
+			array( $this, 'render_remote_media_url' ), //Callback
+			self::MENU_SLUG, // Page
+			self::OPTION_NAME . '_section' // Section
 		);
-		\add_settings_field(
-			'membership_api_url',
-			__( 'Membership API URL', 'site-functionality' ),
-			array( $this, 'render_membership_api_url_field' ),
-			self::OPTION_NAME,
-			self::OPTION_NAME . '_section'
-		);
-		\add_settings_field(
-			'funds_api_url',
-			__( 'Funds API URL', 'site-functionality' ),
-			array( $this, 'render_funds_api_url_field' ),
-			self::OPTION_NAME,
-			self::OPTION_NAME . '_section'
-		);
-		\add_settings_field(
-			'recaptcha_v3_site_key',
-			__( 'Recaptcha Site Key', 'site-functionality' ),
-			array( $this, 'render_recaptcha_v3_site_key_field' ),
-			self::OPTION_NAME,
-			self::OPTION_NAME . '_section'
-		);
-		\add_settings_field(
-			'stripe_public_token',
-			__( 'Stripe Public Token', 'site-functionality' ),
-			array( $this, 'render_stripe_public_token_field' ),
-			self::OPTION_NAME,
-			self::OPTION_NAME . '_section'
-		);
-
 	}
 
 	/**
-	 * Render Settings Page
+	 * Renders the Site Settings page
 	 *
+	 * @since  
 	 * @return void
 	 */
-	public function render_page() {
-
-		// Check required user capability
-		if ( ! current_user_can( 'manage_options' ) ) {
+	public function render_page(): void {
+		if ( ! current_user_can( $this->capabilities ) ) {
 			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'site-functionality' ) );
 		}
-
-		// Admin Page Layout
-		echo '<div class="wrap">' . "\n";
-		echo '	<h1>' . \get_admin_page_title() . '</h1>' . "\n";
-		echo '	<form action="options.php" method="post">' . "\n";
-
-		\settings_fields( 'site_settings' );
-		\do_settings_sections( self::OPTION_NAME );
-		\submit_button();
-
-		echo '	</form>' . "\n";
-		echo '</div>' . "\n";
-
+		?>
+		<div class="wrap">
+			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
+			<?php
+			if ( isset( $_GET['settings-updated'] ) ) {
+				wp_admin_notice(
+					__( 'Settings saved.', 'site-functionality' ),
+					array(
+						'type' => 'success',
+					)
+				);
+			}
+			?>
+			<form action="options.php" method="post">
+				<?php
+				settings_fields( self::OPTION_NAME );
+				do_settings_sections( self::OPTION_NAME );
+				submit_button();
+				?>
+			</form>
+		</div>
+		<?php
 	}
 
 	/**
@@ -159,87 +160,16 @@ class Options extends Base {
 	 *
 	 * @return void
 	 */
-	function render_donate_api_url_field() {
-
-		// Set default value.
-		$value = isset( $this->options['donate_api_url'] ) ? $this->options['donate_api_url'] : 'https://membership.debtcollective.org/donate';
-
-		// Field output.
-		echo '<input type="url" name="web_components[donate_api_url]" class="regular-text donate_api_url_field" placeholder="' . \esc_attr__( '', 'site-functionality' ) . '" value="' . \esc_attr( $value ) . '">';
-
-	}
-
-	/**
-	 * Render Field
-	 *
-	 * @return void
-	 */
-	function render_membership_api_url_field() {
-
-		// Set default value.
-		$value = isset( $this->options['membership_api_url'] ) ? $this->options['membership_api_url'] : 'https://membership.debtcollective.org/subscriptions';
-
-		// Field output.
-		echo '<input type="url" name="web_components[membership_api_url]" class="regular-text membership_api_url_field" placeholder="' . \esc_attr__( '', 'site-functionality' ) . '" value="' . \esc_attr( $value ) . '">';
-
-	}
-
-	/**
-	 * Render Field
-	 *
-	 * @return void
-	 */
-	function render_funds_api_url_field() {
-
-		// Set default value.
-		$value = isset( $this->options['funds_api_url'] ) ? $this->options['funds_api_url'] : 'https://membership.debtcollective.org/funds';
-
-		// Field output.
-		echo '<input type="url" name="web_components[funds_api_url]" class="regular-text funds_api_url_field" placeholder="' . \esc_attr__( '', 'site-functionality' ) . '" value="' . \esc_attr( $value ) . '">';
-
-	}
-
-	/**
-	 * Render Field
-	 *
-	 * @return void
-	 */
-	function render_recaptcha_v3_site_key_field() {
-
-		// Set default value.
-		$value = isset( $this->options['recaptcha_v3_site_key'] ) ? $this->options['recaptcha_v3_site_key'] : '6Lfw_twZAAAAALGtiJ6np4Y_6D9LcdP4atBfA8Fh';
-
-		// Field output.
-		echo '<input type="password" name="web_components[recaptcha_v3_site_key]" class="regular-text recaptcha_v3_site_key_field" placeholder="' . \esc_attr__( '', 'site-functionality' ) . '" value="' . \esc_attr( $value ) . '">';
-
-	}
-
-	/**
-	 * Render Field
-	 *
-	 * @return void
-	 */
-	function render_stripe_public_token_field() {
-
-		// Set default value.
-		$value = isset( $this->options['stripe_public_token'] ) ? $this->options['stripe_public_token'] : 'pk_live_GmPEInjwOnEJOp1xKbboweXA00JsHcOLf5';
-
-		// Field output.
-		echo '<input type="password" name="web_components[stripe_public_token]" class="regular-text stripe_public_token_field" placeholder="' . \esc_attr__( '', 'site-functionality' ) . '" value="' . \esc_attr( $value ) . '">';
-	}
-
-	/**
-	 * Load Select 2
-	 *
-	 * @return void
-	 */
-	function admin_enqueue_scripts() {
-
-		if ( ! wp_script_is( 'select2', 'enqueued' ) ) {
-			\wp_enqueue_style( 'select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css' );
-			\wp_enqueue_script( 'select2', 'https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js', array( 'jquery' ) );
-		}
-
-		\wp_enqueue_script( 'site-functionality-admin-scripts', SITE_CORE_DIR_URI . 'assets/js/options.js', array( 'select2' ) );
+	function render_remote_media_url() {
+		$path = get_option( $this->options['remote_media_url'], $this->remote_media_url );
+		?>
+		<input
+			type="text"
+			id="<?php echo esc_attr( $this->remote_media_option ); ?>"
+			name="<?php echo esc_attr( $this->remote_media_option ); ?>"
+			value="<?php echo esc_attr( $path ); ?>"
+			class="regular-text"
+		/>
+		<?php 
 	}
 }
