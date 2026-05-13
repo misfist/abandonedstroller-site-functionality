@@ -63,6 +63,10 @@ class Options extends Base {
 	public function init() {
 		\add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		\add_action( 'admin_init', array( $this, 'init_settings' ) );
+
+		if ( 'local' === wp_get_environment_type() ) {
+			add_filter( 'upload_dir', array( $this, 'serve_remote_media' ) );
+		}
 	}
 
 	/**
@@ -106,7 +110,7 @@ class Options extends Base {
 			self::OPTION_NAME . '_section', // ID
 			'', // Title
 			false, // Callback
-			sself::MENU_SLUG // Page
+			self::MENU_SLUG // Page
 		);
 
 		/**
@@ -115,7 +119,7 @@ class Options extends Base {
 		\add_settings_field(
 			'remote_media_url', // ID
 			__( 'Serve Media from Remote URL', 'site-functionality' ), // Title
-			array( $this, 'render_remote_media_url' ), //Callback
+			array( $this, 'render_remote_media_url' ), // Callback
 			self::MENU_SLUG, // Page
 			self::OPTION_NAME . '_section' // Section
 		);
@@ -124,7 +128,7 @@ class Options extends Base {
 	/**
 	 * Renders the Site Settings page
 	 *
-	 * @since  
+	 * @since
 	 * @return void
 	 */
 	public function render_page(): void {
@@ -134,20 +138,10 @@ class Options extends Base {
 		?>
 		<div class="wrap">
 			<h1><?php echo esc_html( get_admin_page_title() ); ?></h1>
-			<?php
-			if ( isset( $_GET['settings-updated'] ) ) {
-				wp_admin_notice(
-					__( 'Settings saved.', 'site-functionality' ),
-					array(
-						'type' => 'success',
-					)
-				);
-			}
-			?>
 			<form action="options.php" method="post">
 				<?php
 				settings_fields( self::OPTION_NAME );
-				do_settings_sections( self::OPTION_NAME );
+				do_settings_sections( self::MENU_SLUG );
 				submit_button();
 				?>
 			</form>
@@ -157,19 +151,39 @@ class Options extends Base {
 
 	/**
 	 * Render Field
+	 * 
+	 * @since 1.0.2
 	 *
 	 * @return void
 	 */
 	function render_remote_media_url() {
-		$path = get_option( $this->options['remote_media_url'], $this->remote_media_url );
+		$path = $this->options['remote_media_url'] ?? $this->remote_media_url;
 		?>
 		<input
 			type="text"
 			id="<?php echo esc_attr( $this->remote_media_option ); ?>"
-			name="<?php echo esc_attr( $this->remote_media_option ); ?>"
+			name="<?php echo esc_attr( self::OPTION_NAME . '[' . $this->remote_media_option . ']' ); ?>"
 			value="<?php echo esc_attr( $path ); ?>"
 			class="regular-text"
 		/>
-		<?php 
+		<?php
+	}
+
+	/**
+	 * Serve media uploads from the live site on local environments.
+	 * 
+	 * @since 1.0.2
+	 *
+	 * @param array $dirs Upload directory data.
+	 * @return array
+	 */
+	function serve_remote_media( array $dirs ): array {
+		if ( isset( $this->options['remote_media_url'] ) && $this->options['remote_media_url'] ) {
+			$remote = untrailingslashit( $this->options['remote_media_url'] );
+			$local  = untrailingslashit( get_option( 'siteurl' ) );
+			$dirs['baseurl'] = str_replace( $local, $remote, $dirs['baseurl'] );
+			$dirs['url']     = str_replace( $local, $remote, $dirs['url'] );
+		}
+		return $dirs;
 	}
 }

@@ -33,7 +33,9 @@ class Admin extends Base {
 	 *
 	 * @return void
 	 */
-	public function init() {}
+	public function init() {
+		$options = new Options( $this->version, $this->plugin_name );
+	}
 
 	/**
 	 * Modify Admin Menu Name
