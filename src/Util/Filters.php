@@ -36,6 +36,13 @@ class Filters extends Base {
 		 * @see https://make.wordpress.org/core/2021/07/01/block-styles-loading-enhancements-in-wordpress-5-8/
 		 */
 		\add_filter( 'should_load_separate_core_block_assets', '__return_true' );
+
+		/**
+		 * @see https://wordpress.org/support/topic/i-will-drop-jetpack-like-a-rabid-opossum-if-i-cant-disable-ai/
+		 * 
+		 * @since 1.0.3
+		 */
+		\add_filter( 'jetpack_ai_enabled', '__return_false' );
 	}
 
 }

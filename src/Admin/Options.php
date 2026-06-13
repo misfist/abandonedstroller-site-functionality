@@ -17,32 +17,75 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Options extends Base {
 
-	public $options = array();
+	/**
+	 * Saved options.
+	 *
+	 * @since 1.0.3
+	 * @var   array
+	 */
+	public array $options = array();
 
+	/**
+	 * Option group and option name.
+	 *
+	 * @since 1.0.3
+	 * @var   string
+	 */
 	public const OPTION_NAME = 'site_settings';
 
-	public const MENU_SLUG = 'site-settings';
+	/**
+	 * Admin menu slug.
+	 *
+	 * @since 1.0.3
+	 * @var   string
+	 */
+	protected string $menu_slug = 'site-settings';
 
 	/**
-	 * Remove media id
+	 * Option key for the remote media URL.
 	 *
-	 * @var string
+	 * @since 1.0.3
+	 * @var   string
 	 */
-	public $remote_media_option = 'remote_media_url';
+	protected string $remote_media_option = 'remote_media_url';
 
 	/**
-	 * Remove media url
+	 * Default remote media URL.
 	 *
-	 * @var string
+	 * @since 1.0.3
+	 * @var   string
 	 */
-	public $remote_media_url = 'https://abandonedstroller.com';
+	protected string $remote_media_url = '';
 
 	/**
-	 * Setting capabilities
+	 * Option key for the enabled toggle.
 	 *
-	 * @var string
+	 * @since 1.0.3
+	 * @var   string
 	 */
-	public $capabilities = 'manage_options';
+	protected string $remote_media_enabled_option = 'remote_media_enabled';
+
+	/**
+	 * Environments on which remote media serving is permitted.
+	 *
+	 * Filterable via the `site_functionality_remote_media_environments` filter.
+	 *
+	 * @since 1.0.3
+	 * @var   array
+	 */
+	protected array $enabled_environments = array(
+		'local',
+		'development',
+		'staging',
+	);
+
+	/**
+	 * Required capability to manage settings.
+	 *
+	 * @since 1.0.3
+	 * @var   string
+	 */
+	protected string $capabilities = 'manage_options';
 
 	/**
 	 * Constructor.
@@ -52,7 +95,6 @@ class Options extends Base {
 	public function __construct( $version, $plugin_name ) {
 		parent::__construct( $version, $plugin_name );
 		$this->init();
-		$this->options = \get_option( self::OPTION_NAME );
 	}
 
 	/**
@@ -61,74 +103,71 @@ class Options extends Base {
 	 * @return void
 	 */
 	public function init() {
-		\add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
-		\add_action( 'admin_init', array( $this, 'init_settings' ) );
+		$this->options             = (array) get_option( self::OPTION_NAME, array() );
+		$this->enabled_environments = (array) apply_filters( 'site_functionality_remote_media_environments', $this->enabled_environments );
 
-		if ( 'local' === wp_get_environment_type() ) {
+		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
+		add_action( 'admin_init', array( $this, 'init_settings' ) );
+
+		if ( in_array( wp_get_environment_type(), $this->enabled_environments, true ) && ! empty( $this->options[ $this->remote_media_enabled_option ] ) ) {
 			add_filter( 'upload_dir', array( $this, 'serve_remote_media' ) );
 		}
 	}
 
 	/**
-	 * Add Options Page
+	 * Register the options page under Settings.
 	 *
-	 * @link https://developer.wordpress.org/reference/functions/add_options_page/
-	 *
+	 * @since  1.0.3
 	 * @return void
 	 */
-	public function add_admin_menu() {
-
-		\add_options_page(
-			\esc_html__( 'Site Settings', 'site-functionality' ), // Page Title
-			\esc_html__( 'Site Settings', 'site-functionality' ), // Menu Title
-			$this->capabilities, // Capability
-			self::MENU_SLUG, // Menu Slug
-			array( $this, 'render_page' ), // Callback
-			1 // Position
+	public function add_admin_menu(): void {
+		add_options_page(
+			esc_html__( 'Site Settings', 'site-functionality' ),
+			esc_html__( 'Site Settings', 'site-functionality' ),
+			$this->capabilities,
+			$this->menu_slug,
+			array( $this, 'render_page' ),
+			1
 		);
 	}
 
 	/**
-	 * Register Settings
+	 * Register settings, section, and field.
 	 *
+	 * @since  1.0.3
 	 * @return void
 	 */
-	public function init_settings() {
+	public function init_settings(): void {
+		register_setting( self::OPTION_NAME, self::OPTION_NAME );
 
-		/**
-		 * @link https://developer.wordpress.org/reference/functions/register_setting/
-		 */
-		\register_setting(
-			self::OPTION_NAME, // Option Group
-			self::OPTION_NAME // Option Name
+		add_settings_section(
+			self::OPTION_NAME . '_section',
+			'',
+			false,
+			$this->menu_slug
 		);
 
-		/**
-		 * @link https://developer.wordpress.org/reference/functions/add_settings_section/
-		 */
-		\add_settings_section(
-			self::OPTION_NAME . '_section', // ID
-			'', // Title
-			false, // Callback
-			self::MENU_SLUG // Page
+		add_settings_field(
+			$this->remote_media_enabled_option,
+			__( 'Enable Remote Media', 'site-functionality' ),
+			array( $this, 'render_remote_media_enabled' ),
+			$this->menu_slug,
+			self::OPTION_NAME . '_section'
 		);
 
-		/**
-		 * https://developer.wordpress.org/reference/functions/add_settings_field/
-		 */
-		\add_settings_field(
-			'remote_media_url', // ID
-			__( 'Serve Media from Remote URL', 'site-functionality' ), // Title
-			array( $this, 'render_remote_media_url' ), // Callback
-			self::MENU_SLUG, // Page
-			self::OPTION_NAME . '_section' // Section
+		add_settings_field(
+			$this->remote_media_option,
+			__( 'Remote Media URL', 'site-functionality' ),
+			array( $this, 'render_remote_media_url' ),
+			$this->menu_slug,
+			self::OPTION_NAME . '_section'
 		);
 	}
 
 	/**
-	 * Renders the Site Settings page
+	 * Render the settings page.
 	 *
-	 * @since
+	 * @since  1.0.3
 	 * @return void
 	 */
 	public function render_page(): void {
@@ -141,7 +180,7 @@ class Options extends Base {
 			<form action="options.php" method="post">
 				<?php
 				settings_fields( self::OPTION_NAME );
-				do_settings_sections( self::MENU_SLUG );
+				do_settings_sections( $this->menu_slug );
 				submit_button();
 				?>
 			</form>
@@ -150,40 +189,63 @@ class Options extends Base {
 	}
 
 	/**
-	 * Render Field
-	 * 
-	 * @since 1.0.2
+	 * Render the enabled toggle field.
 	 *
+	 * @since  1.0.3
 	 * @return void
 	 */
-	function render_remote_media_url() {
-		$path = $this->options['remote_media_url'] ?? $this->remote_media_url;
+	public function render_remote_media_enabled(): void {
+		$enabled = ! empty( $this->options[ $this->remote_media_enabled_option ] );
+		?>
+		<input
+			type="checkbox"
+			id="<?php echo esc_attr( $this->remote_media_enabled_option ); ?>"
+			name="<?php echo esc_attr( self::OPTION_NAME . '[' . $this->remote_media_enabled_option . ']' ); ?>"
+			value="1"
+			<?php checked( $enabled ); ?>
+		/>
+		<p class="description"><?php printf( esc_html__( 'Only active on: %s.', 'site-functionality' ), esc_html( implode( ', ', $this->enabled_environments ) ) ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Render the remote media URL input field.
+	 *
+	 * @since  1.0.3
+	 * @return void
+	 */
+	public function render_remote_media_url(): void {
+		$value = $this->options[ $this->remote_media_option ] ?? $this->remote_media_url;
 		?>
 		<input
 			type="text"
 			id="<?php echo esc_attr( $this->remote_media_option ); ?>"
 			name="<?php echo esc_attr( self::OPTION_NAME . '[' . $this->remote_media_option . ']' ); ?>"
-			value="<?php echo esc_attr( $path ); ?>"
+			value="<?php echo esc_attr( $value ); ?>"
 			class="regular-text"
 		/>
 		<?php
 	}
 
 	/**
-	 * Serve media uploads from the live site on local environments.
-	 * 
-	 * @since 1.0.2
+	 * Rewrite upload URLs to point to the remote site on local environments.
 	 *
-	 * @param array $dirs Upload directory data.
+	 * @since  1.0.3
+	 * @param  array $dirs Upload directory data.
 	 * @return array
 	 */
-	function serve_remote_media( array $dirs ): array {
-		if ( isset( $this->options['remote_media_url'] ) && $this->options['remote_media_url'] ) {
-			$remote = untrailingslashit( $this->options['remote_media_url'] );
-			$local  = untrailingslashit( get_option( 'siteurl' ) );
-			$dirs['baseurl'] = str_replace( $local, $remote, $dirs['baseurl'] );
-			$dirs['url']     = str_replace( $local, $remote, $dirs['url'] );
+	public function serve_remote_media( array $dirs ): array {
+		$remote = $this->options[ $this->remote_media_option ] ?? $this->remote_media_url;
+
+		if ( ! $remote ) {
+			return $dirs;
 		}
+
+		$remote          = untrailingslashit( $remote );
+		$local           = untrailingslashit( get_option( 'siteurl' ) );
+		$dirs['baseurl'] = str_replace( $local, $remote, $dirs['baseurl'] );
+		$dirs['url']     = str_replace( $local, $remote, $dirs['url'] );
+
 		return $dirs;
 	}
 }
